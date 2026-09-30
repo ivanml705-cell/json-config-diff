@@ -40,6 +40,79 @@ test('null, absent keys, root replacements and added subtrees remain distinct', 
   assert.equal(compare([{ value: -0 }], [{ value: 0 }]).equal, true);
 });
 
+test('index mode descends through array objects and nested arrays with escaped paths', () => {
+  assert.deepEqual(compare({ 'a/b': [{ '~': [1, 2] }, null] }, { 'a/b': [{ '~': [1, 3] }, false] }, { arrays: 'index' }), {
+    equal: false, changes: [
+      { type: 'changed', path: '/a~1b/0/~0/1', before: 2, after: 3 },
+      { type: 'changed', path: '/a~1b/1', before: null, after: false },
+    ],
+  });
+  assert.deepEqual(compare([{ x: 1, y: 2 }], [{ y: 2, x: 1 }], { arrays: 'index' }), { equal: true, changes: [] });
+});
+
+test('index mode reports missing tail positions once, in numeric order', () => {
+  const values = Array.from({ length: 12 }, (_, i) => i === 0 ? null : { n: i });
+  assert.deepEqual(compare([], values, { arrays: 'index' }).changes,
+    values.map((after, i) => ({ type: 'added', path: `/${i}`, after })));
+  assert.deepEqual(compare(values, [], { arrays: 'index' }).changes,
+    values.map((before, i) => ({ type: 'removed', path: `/${i}`, before })));
+  assert.deepEqual(compare([], [], { arrays: 'index' }), { equal: true, changes: [] });
+  assert.deepEqual(compare({}, { list: values }, { arrays: 'index' }).changes,
+    [{ type: 'added', path: '/list', after: values }]);
+});
+
+test('index mode compares positions without matching insertions, removals or moves', () => {
+  assert.deepEqual(compare(['a', 'b'], ['x', 'a', 'b'], { arrays: 'index' }).changes, [
+    { type: 'changed', path: '/0', before: 'a', after: 'x' },
+    { type: 'changed', path: '/1', before: 'b', after: 'a' },
+    { type: 'added', path: '/2', after: 'b' },
+  ]);
+  assert.deepEqual(compare(['a', 'b'], ['b'], { arrays: 'index' }).changes, [
+    { type: 'changed', path: '/0', before: 'a', after: 'b' },
+    { type: 'removed', path: '/1', before: 'b' },
+  ]);
+  assert.deepEqual(compare([1, 2], [2, 1], { arrays: 'index' }).changes, [
+    { type: 'changed', path: '/0', before: 1, after: 2 },
+    { type: 'changed', path: '/1', before: 2, after: 1 },
+  ]);
+});
+
+test('array modes preserve type changes, atomic defaults and immutable inputs', () => {
+  const before = Object.freeze([Object.freeze({ x: 1 })]);
+  const after = Object.freeze([Object.freeze({ x: 2 })]);
+  assert.deepEqual(compare(before, after, { arrays: 'atomic' }), compare(before, after));
+  assert.deepEqual(compare(before, after, { arrays: 'index' }).changes,
+    [{ type: 'changed', path: '/0/x', before: 1, after: 2 }]);
+  for (const [left, right] of [[[], {}], [null, []], [[[]], [0]]]) {
+    assert.deepEqual(compare(left, right, { arrays: 'index' }).changes,
+      [{ type: 'changed', path: Array.isArray(left) && Array.isArray(right) ? '/0' : '',
+        before: Array.isArray(left) && Array.isArray(right) ? left[0] : left,
+        after: Array.isArray(left) && Array.isArray(right) ? right[0] : right }]);
+  }
+  assert.throws(() => compare([], [], { arrays: 'unknown' }), /array mode/);
+});
+
+test('CLI array selection supports text and JSON reports and rejects invalid modes', async t => {
+  const root = await fixture(t);
+  await writeFile(path.join(root, 'before.json'), '{"servers":[{"port":3000}]}');
+  await writeFile(path.join(root, 'after.json'), '{"servers":[{"port":8080},null]}');
+  const run = (...args) => spawnSync(process.execPath, [cli, 'before.json', 'after.json', ...args], { cwd: root, encoding: 'utf8' });
+  const indexed = run('--arrays', 'index', '--json');
+  assert.equal(indexed.status, 1);
+  assert.deepEqual(JSON.parse(indexed.stdout).changes, [
+    { type: 'changed', path: '/servers/0/port', before: 3000, after: 8080 },
+    { type: 'added', path: '/servers/1', after: null },
+  ]);
+  assert.match(run('--arrays=index').stdout, /CHANGED "\/servers\/0\/port": 3000 -> 8080/);
+  assert.deepEqual(run('--arrays', 'atomic', '--json').stdout, run('--json').stdout);
+  const invalid = run('--arrays', 'unknown', '--json');
+  assert.equal(invalid.status, 2);
+  assert.match(JSON.parse(invalid.stdout).error, /array mode/);
+  assert.equal(run('--arrays').status, 2);
+  await writeFile(path.join(root, 'after.json'), '{"servers":[{"port":3000}]}');
+  assert.equal(run('--arrays', 'index').status, 0);
+});
+
 test('paths escape special keys and prototype-like names are ordinary data', () => {
   const after = JSON.parse('{"a/b":{"~":1},"":2,"__proto__":{"x":3},"constructor":4}');
   const before = JSON.parse('{"a/b":{"~":0}}');

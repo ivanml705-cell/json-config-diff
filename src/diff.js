@@ -45,8 +45,9 @@ export async function readJson(file) {
   return value;
 }
 
-// Inputs are JSON-compatible values. Arrays are atomic in this first milestone.
-export function compare(before, after) {
+// Inputs are JSON-compatible values. Index mode compares positions, not identities.
+export function compare(before, after, { arrays = 'atomic' } = {}) {
+  if (arrays !== 'atomic' && arrays !== 'index') throw new Error('Expected array mode "atomic" or "index"');
   validate(before);
   validate(after);
   const changes = [];
@@ -63,6 +64,13 @@ export function compare(before, after) {
         if (!Object.hasOwn(left, key)) stack.push({ type: 'added', path: childPath, after: right[key] });
         else if (!Object.hasOwn(right, key)) stack.push({ type: 'removed', path: childPath, before: left[key] });
         else stack.push({ before: left[key], after: right[key], path: childPath });
+      }
+    } else if (arrays === 'index' && Array.isArray(left) && Array.isArray(right)) {
+      for (let i = Math.max(left.length, right.length) - 1; i >= 0; i--) {
+        const childPath = `${path}/${i}`;
+        if (i >= left.length) stack.push({ type: 'added', path: childPath, after: right[i] });
+        else if (i >= right.length) stack.push({ type: 'removed', path: childPath, before: left[i] });
+        else stack.push({ before: left[i], after: right[i], path: childPath });
       }
     } else if (!equalValues(left, right)) changes.push({ type: 'changed', path, before: left, after: right });
   }

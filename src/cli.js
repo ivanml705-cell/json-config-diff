@@ -4,12 +4,13 @@ import { compare, readJson } from './diff.js';
 
 const help = `json-config-diff — compare two local JSON files
 
-Usage: node src/cli.js before.json after.json [--json]
+Usage: node src/cli.js before.json after.json [--json] [--arrays atomic|index]
+  --arrays    Compare arrays as atomic values (default) or by index
   --json      Print a structured report
   -h, --help  Show this help
 
 Exit codes: 0 equal, 1 differences, 2 argument or input error.
-Arrays are compared as whole values. Files are never modified.
+Index mode compares positions, without detecting moves. Files are never modified.
 `;
 const printable = text => String(text).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ');
 
@@ -18,13 +19,15 @@ async function main() {
   try {
     const { values, positionals } = parseArgs({ allowPositionals: true, options: {
       json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+      arrays: { type: 'string', default: 'atomic' },
     } });
     json = values.json ?? false;
     if (values.help) { console.log(help); return; }
     if (positionals.length !== 2) throw new Error('Expected exactly two JSON file paths. Use --help for usage.');
+    if (!['atomic', 'index'].includes(values.arrays)) throw new Error('Expected array mode "atomic" or "index"');
     const before = await readJson(positionals[0]);
     const after = await readJson(positionals[1]);
-    const report = compare(before, after);
+    const report = compare(before, after, { arrays: values.arrays });
     if (json) console.log(JSON.stringify(report, null, 2));
     else {
       for (const change of report.changes) {
