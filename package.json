@@ -1,0 +1,10 @@
+{
+  "name": "json-config-diff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Readable, local comparisons of JSON configuration files",
+  "type": "module",
+  "bin": { "json-config-diff": "src/cli.js" },
+  "scripts": { "test": "node --test", "start": "node src/cli.js" },
+  "engines": { "node": ">=22" }
+}
