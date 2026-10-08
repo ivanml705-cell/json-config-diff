@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add repeatable `--exclude` JSON Pointer filters, with subtree matching, validation, and filter metadata in reports.
+
 - Add `--arrays index` to compare array positions recursively, with numeric ordering and tail additions/removals.
 - Preserve whole-array comparison by default and expose explicit `--arrays atomic` selection.
 - Document positional semantics and cover nested arrays, insertions, removals, type changes, and CLI validation.

@@ -2,7 +2,7 @@
 
 Compare two local JSON configuration files and see what was added, removed, or changed. No dependencies, network calls, or file modifications.
 
-**Status: second development milestone.** Nested object comparison and optional array-by-index comparison work. More controls will follow over several sessions.
+**Status: third development milestone.** Nested comparison, optional array-by-index comparison, and path exclusions are available.
 
 ## Run
 
@@ -56,12 +56,25 @@ Indices are zero-based. Positions are compared directly: inserting `"x"` at the 
 
 The JavaScript API also accepts `compare(before, after, { arrays: 'index' })`; omitting the options preserves atomic mode. Supported modes are `atomic` and `index`; other values are errors.
 
+## Exclude paths
+
+```sh
+node src/cli.js before.json after.json --exclude /build/time --exclude /debug --json
+node src/cli.js before.json after.json --arrays index --exclude /servers/0/port
+```
+
+`--exclude` accepts a JSON Pointer and can be repeated. It skips that comparison path and all descendants; `/app` does not match `/apple`. Use `/a~1b` for a key named `a/b`, `/~0` for `~`, and `/` for an empty key. `--exclude=` excludes the root. There are no wildcards or URI-fragment pointers. Array indices use their original zero-based positions; `/01` does not match index 1.
+
+Filters apply to comparison paths, not to values inside a reported container. For example, `/servers/0/port` works when comparing common elements with `--arrays index`, but does not suppress a whole-array change in atomic mode. Likewise, excluding `/app/token` does not suppress the addition/removal of `/app` or a type change at `/app`. Exclude the container itself to skip such a change. Exclusions are not value redaction.
+
+When exclusions are provided, JSON reports include `filters: { "exclude": [...] }` (unique, sorted requested paths, including unmatched paths); text reports list those paths too. `equal` and exit codes reflect the remaining comparison. Even an excluded root still requires valid input files. The API accepts `compare(before, after, { exclude: ['/debug'] })`.
+
 ## Reports and exit codes
 
 JSON output is `{ "equal": boolean, "changes": [...] }`. Each change has `type` (`added`, `removed`, or `changed`), `path`, and the applicable `before` / `after` values. This is a comparison report, not a JSON Patch document. Reports include original values; redact sensitive configuration before sharing them.
 
-- `0`: inputs are equal.
-- `1`: differences found.
+- `0`: no differences remain after exclusions.
+- `1`: differences remain after exclusions.
 - `2`: invalid arguments, unreadable files, invalid JSON, or input limits exceeded.
 
 With `--json`, input errors produce `{ "error": "..." }` on stdout. Option-parsing errors go to stderr. Invalid JSON errors do not echo source content.

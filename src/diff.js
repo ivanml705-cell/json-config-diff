@@ -46,14 +46,20 @@ export async function readJson(file) {
 }
 
 // Inputs are JSON-compatible values. Index mode compares positions, not identities.
-export function compare(before, after, { arrays = 'atomic' } = {}) {
+export function compare(before, after, { arrays = 'atomic', exclude = [] } = {}) {
   if (arrays !== 'atomic' && arrays !== 'index') throw new Error('Expected array mode "atomic" or "index"');
+  if (!Array.isArray(exclude) || exclude.some(pointer => typeof pointer !== 'string' ||
+    (pointer !== '' && !pointer.startsWith('/')) || /~(?![01])/u.test(pointer))) {
+    throw new Error('Exclusions must be JSON Pointer strings: empty for root, or starting with / and using only ~0 and ~1 escapes');
+  }
+  const excluded = [...new Set(exclude)].sort();
   validate(before);
   validate(after);
   const changes = [];
   const stack = [{ before, after, path: '' }];
   while (stack.length) {
     const current = stack.pop();
+    if (excluded.some(pointer => pointer === '' || current.path === pointer || current.path.startsWith(`${pointer}/`))) continue;
     if (current.type) { changes.push(current); continue; }
     const { before: left, after: right, path } = current;
     if (object(left) && object(right)) {
@@ -74,5 +80,5 @@ export function compare(before, after, { arrays = 'atomic' } = {}) {
       }
     } else if (!equalValues(left, right)) changes.push({ type: 'changed', path, before: left, after: right });
   }
-  return { equal: changes.length === 0, changes };
+  return { equal: changes.length === 0, changes, ...(excluded.length ? { filters: { exclude: excluded } } : {}) };
 }

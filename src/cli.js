@@ -4,8 +4,9 @@ import { compare, readJson } from './diff.js';
 
 const help = `json-config-diff — compare two local JSON files
 
-Usage: node src/cli.js before.json after.json [--json] [--arrays atomic|index]
+Usage: node src/cli.js before.json after.json [options]
   --arrays    Compare arrays as atomic values (default) or by index
+  --exclude   Skip a JSON Pointer path and its descendants (repeatable)
   --json      Print a structured report
   -h, --help  Show this help
 
@@ -20,6 +21,7 @@ async function main() {
     const { values, positionals } = parseArgs({ allowPositionals: true, options: {
       json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
       arrays: { type: 'string', default: 'atomic' },
+      exclude: { type: 'string', multiple: true },
     } });
     json = values.json ?? false;
     if (values.help) { console.log(help); return; }
@@ -27,9 +29,10 @@ async function main() {
     if (!['atomic', 'index'].includes(values.arrays)) throw new Error('Expected array mode "atomic" or "index"');
     const before = await readJson(positionals[0]);
     const after = await readJson(positionals[1]);
-    const report = compare(before, after, { arrays: values.arrays });
+    const report = compare(before, after, { arrays: values.arrays, exclude: values.exclude });
     if (json) console.log(JSON.stringify(report, null, 2));
     else {
+      if (report.filters) console.log(printable(`Excluded paths: ${JSON.stringify(report.filters.exclude)}`));
       for (const change of report.changes) {
         const location = change.path === '' ? '(root)' : JSON.stringify(change.path);
         const value = change.type === 'added' ? JSON.stringify(change.after)
