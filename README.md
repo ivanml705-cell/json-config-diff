@@ -2,7 +2,7 @@
 
 Compare two local JSON configuration files and see what was added, removed, or changed. No dependencies, network calls, or file modifications.
 
-**Status: third development milestone.** Nested comparison, optional array-by-index comparison, and path exclusions are available.
+**Status: fourth development milestone.** Nested comparison, optional array-by-index comparison, path exclusions, summaries, and value redaction are available.
 
 ## Run
 
@@ -69,9 +69,27 @@ Filters apply to comparison paths, not to values inside a reported container. Fo
 
 When exclusions are provided, JSON reports include `filters: { "exclude": [...] }` (unique, sorted requested paths, including unmatched paths); text reports list those paths too. `equal` and exit codes reflect the remaining comparison. Even an excluded root still requires valid input files. The API accepts `compare(before, after, { exclude: ['/debug'] })`.
 
+## Summaries and value redaction
+
+```sh
+node src/cli.js before.json after.json --summary
+node src/cli.js before.json after.json --redact-values --json
+node src/cli.js before.json after.json --exclude /debug --summary --redact-values --json
+```
+
+`--summary` prints counts of added, removed, and changed entries after exclusions. A whole container counts as one entry unless comparison descends into it. JSON summary output replaces `changes` with `summary`, for example:
+
+```json
+{"equal":false,"summary":{"added":1,"removed":1,"changed":1,"total":3}}
+```
+
+`--redact-values` removes every `before` and `after` field, including entire object/array values. Entries retain only `type` and `path`; JSON output includes `valuesRedacted: true`, and text output says `Values redacted.`. Comparison and exit codes remain the same. It can be combined with `--summary`, either array mode, and exclusions.
+
+These options omit values, not metadata: change paths, excluded paths, and error file paths can still contain sensitive names. Summary output omits individual change paths but retains the requested filters. The API exposes `prepareReport(report, { summary: true, redactValues: true })` from `src/report.js`; it does not alter the original comparison report.
+
 ## Reports and exit codes
 
-JSON output is `{ "equal": boolean, "changes": [...] }`. Each change has `type` (`added`, `removed`, or `changed`), `path`, and the applicable `before` / `after` values. This is a comparison report, not a JSON Patch document. Reports include original values; redact sensitive configuration before sharing them.
+Default JSON output is `{ "equal": boolean, "changes": [...] }`. Each change has `type` (`added`, `removed`, or `changed`), `path`, and the applicable `before` / `after` values. This is a comparison report, not a JSON Patch document. Use `--redact-values` to omit values when sharing a report.
 
 - `0`: no differences remain after exclusions.
 - `1`: differences remain after exclusions.

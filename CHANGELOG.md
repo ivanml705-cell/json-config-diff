@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add `--summary` counts after filtering and `--redact-values` reports without before/after data.
+- Keep report presentation separate from comparison and preserve equality/exit-code behavior.
+
 - Add repeatable `--exclude` JSON Pointer filters, with subtree matching, validation, and filter metadata in reports.
 
 - Add `--arrays index` to compare array positions recursively, with numeric ordering and tail additions/removals.
