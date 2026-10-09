@@ -1,0 +1,6 @@
+{
+  "arrays": "index",
+  "exclude": ["/generatedAt"],
+  "summary": true,
+  "redactValues": true
+}

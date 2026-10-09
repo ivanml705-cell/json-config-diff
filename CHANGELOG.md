@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add explicit `--config` JSON files with strict validation and CLI precedence, plus flags to clear configured exclusions, summary output, or value redaction.
+- Add a working CI configuration-drift example and tests for equal, different, and invalid inputs.
+
 - Add `--summary` counts after filtering and `--redact-values` reports without before/after data.
 - Keep report presentation separate from comparison and preserve equality/exit-code behavior.
 

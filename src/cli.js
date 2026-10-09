@@ -2,14 +2,19 @@
 import { parseArgs } from 'node:util';
 import { compare, readJson } from './diff.js';
 import { prepareReport } from './report.js';
+import { readConfig, resolveOptions } from './config.js';
 
 const help = `json-config-diff — compare two local JSON files
 
 Usage: node src/cli.js before.json after.json [options]
+  --config    Load options from a JSON file (explicit path, no auto-discovery)
   --arrays    Compare arrays as atomic values (default) or by index
   --exclude   Skip a JSON Pointer path and its descendants (repeatable)
+  --clear-excludes  Ignore exclusions from the configuration file
   --summary   Print counts only, without individual changes
+  --no-summary  Override a configured summary with individual changes
   --redact-values  Omit all before/after values from reports
+  --no-redact-values  Override configured redaction and show values
   --json      Print a structured report
   -h, --help  Show this help
 
@@ -23,19 +28,20 @@ async function main() {
   try {
     const { values, positionals } = parseArgs({ allowPositionals: true, options: {
       json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
-      arrays: { type: 'string', default: 'atomic' },
+      arrays: { type: 'string' }, config: { type: 'string' },
       exclude: { type: 'string', multiple: true },
       summary: { type: 'boolean' }, 'redact-values': { type: 'boolean' },
+      'no-summary': { type: 'boolean' }, 'no-redact-values': { type: 'boolean' },
+      'clear-excludes': { type: 'boolean' },
     } });
     json = values.json ?? false;
     if (values.help) { console.log(help); return; }
     if (positionals.length !== 2) throw new Error('Expected exactly two JSON file paths. Use --help for usage.');
-    if (!['atomic', 'index'].includes(values.arrays)) throw new Error('Expected array mode "atomic" or "index"');
+    const config = values.config === undefined ? {} : await readConfig(values.config);
+    const options = resolveOptions(config, values);
     const before = await readJson(positionals[0]);
     const after = await readJson(positionals[1]);
-    const report = prepareReport(compare(before, after, { arrays: values.arrays, exclude: values.exclude }), {
-      summary: values.summary, redactValues: values['redact-values'],
-    });
+    const report = prepareReport(compare(before, after, options), options);
     if (json) console.log(JSON.stringify(report, null, 2));
     else {
       if (report.filters) console.log(printable(`Excluded paths: ${JSON.stringify(report.filters.exclude)}`));

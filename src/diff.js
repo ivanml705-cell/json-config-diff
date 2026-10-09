@@ -45,14 +45,18 @@ export async function readJson(file) {
   return value;
 }
 
-// Inputs are JSON-compatible values. Index mode compares positions, not identities.
-export function compare(before, after, { arrays = 'atomic', exclude = [] } = {}) {
+export function comparisonOptions({ arrays = 'atomic', exclude = [] } = {}) {
   if (arrays !== 'atomic' && arrays !== 'index') throw new Error('Expected array mode "atomic" or "index"');
   if (!Array.isArray(exclude) || exclude.some(pointer => typeof pointer !== 'string' ||
     (pointer !== '' && !pointer.startsWith('/')) || /~(?![01])/u.test(pointer))) {
     throw new Error('Exclusions must be JSON Pointer strings: empty for root, or starting with / and using only ~0 and ~1 escapes');
   }
-  const excluded = [...new Set(exclude)].sort();
+  return { arrays, exclude: [...new Set(exclude)].sort() };
+}
+
+// Inputs are JSON-compatible values. Index mode compares positions, not identities.
+export function compare(before, after, options = {}) {
+  const { arrays, exclude: excluded } = comparisonOptions(options);
   validate(before);
   validate(after);
   const changes = [];

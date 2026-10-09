@@ -2,7 +2,7 @@
 
 Compare two local JSON configuration files and see what was added, removed, or changed. No dependencies, network calls, or file modifications.
 
-**Status: fourth development milestone.** Nested comparison, optional array-by-index comparison, path exclusions, summaries, and value redaction are available.
+**Status: fifth development milestone.** Nested comparison, array modes, exclusions, summaries, value redaction, project configuration, and a working CI example are available.
 
 ## Run
 
@@ -86,6 +86,42 @@ node src/cli.js before.json after.json --exclude /debug --summary --redact-value
 `--redact-values` removes every `before` and `after` field, including entire object/array values. Entries retain only `type` and `path`; JSON output includes `valuesRedacted: true`, and text output says `Values redacted.`. Comparison and exit codes remain the same. It can be combined with `--summary`, either array mode, and exclusions.
 
 These options omit values, not metadata: change paths, excluded paths, and error file paths can still contain sensitive names. Summary output omits individual change paths but retains the requested filters. The API exposes `prepareReport(report, { summary: true, redactValues: true })` from `src/report.js`; it does not alter the original comparison report.
+
+## Project configuration
+
+Save reusable options in a JSON file, for example `json-config-diff.json`:
+
+```json
+{
+  "arrays": "index",
+  "exclude": ["/generatedAt"],
+  "summary": true,
+  "redactValues": true
+}
+```
+
+```sh
+node src/cli.js before.json after.json --config json-config-diff.json --json
+node src/cli.js before.json after.json --config json-config-diff.json --no-summary
+```
+
+Configuration is loaded only when `--config` is supplied; there is no automatic discovery or parent-directory search. The config path and both input paths are relative to the current working directory, regardless of the config file's location. Inputs remain required positional arguments. `--json` controls output format independently and is not a config field.
+
+All four config fields are optional. `arrays` accepts `atomic` or `index`; `exclude` is an array of JSON Pointer strings; `summary` and `redactValues` are booleans. Unknown fields, wrong types, malformed JSON, or unreadable files fail with exit code 2. The entire config is validated even when an option is overridden. The same BOM, file-size, depth, and numeric limits as input files apply.
+
+Explicit CLI options take precedence over config settings, followed by the usual defaults (atomic arrays, no exclusions, individual changes, visible values). Repeated CLI `--exclude` options **replace** the configured list. Use `--clear-excludes` to remove it entirely, `--no-summary` for individual changes, and `--no-redact-values` to show values. A positive and negative flag together is an error, as is `--exclude` together with `--clear-excludes`. `--help` does not load the config or inputs.
+
+## CI integration
+
+The repository runs [a configuration check](.github/workflows/test.yml) alongside the test matrix. Try the same command locally:
+
+```sh
+node src/cli.js examples/ci/expected.json examples/ci/actual.json --config examples/ci/diff.config.json --json
+```
+
+The two example files differ only in `/generatedAt`, which the config excludes, so this exits with code 0. Changing a server port or feature flag produces exit code 1 and fails the CI step. Invalid or missing files produce exit code 2 and also fail. The report contains counts and filters, without values. Tests cover all three outcomes.
+
+See [the CI example guide](examples/ci/README.md) for adapting the check to another repository.
 
 ## Reports and exit codes
 
