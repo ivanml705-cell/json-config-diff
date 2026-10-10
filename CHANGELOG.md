@@ -1,15 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-10-10
+
+- Reject malformed UTF-8 in inputs and configuration files instead of silently replacing bytes and potentially hiding differences.
+- Recheck the size of the bytes read, and add regression coverage for encoding, BOM handling, exact size limits, and depth limits.
 
 - Add explicit `--config` JSON files with strict validation and CLI precedence, plus flags to clear configured exclusions, summary output, or value redaction.
 - Add a working CI configuration-drift example and tests for equal, different, and invalid inputs.
-
 - Add `--summary` counts after filtering and `--redact-values` reports without before/after data.
 - Keep report presentation separate from comparison and preserve equality/exit-code behavior.
-
 - Add repeatable `--exclude` JSON Pointer filters, with subtree matching, validation, and filter metadata in reports.
-
 - Add `--arrays index` to compare array positions recursively, with numeric ordering and tail additions/removals.
 - Preserve whole-array comparison by default and expose explicit `--arrays atomic` selection.
 - Document positional semantics and cover nested arrays, insertions, removals, type changes, and CLI validation.

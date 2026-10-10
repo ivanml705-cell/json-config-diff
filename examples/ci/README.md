@@ -27,13 +27,13 @@ For another repository, after checking out your own project, check out a reviewe
 - uses: actions/checkout@v7.0.1
   with:
     repository: ivanml705-cell/json-config-diff
-    ref: YOUR_REVIEWED_COMMIT_SHA
+    ref: v0.2.0
     path: tools/json-config-diff
 # Add your generation step here to create build/actual.json.
 - name: Check configuration drift
   run: node tools/json-config-diff/src/cli.js config/expected.json build/actual.json --config config/diff-options.json --json
 ```
 
-Replace `YOUR_REVIEWED_COMMIT_SHA` with a full commit SHA that includes config support, and replace the example paths with your project's paths. No npm install is required. Do not suppress the command's nonzero exit status: code 1 means drift, while code 2 means the comparison could not be performed.
+The example selects v0.2.0; you can also pin its full commit SHA. Replace the example paths with your project's paths. No npm install is required. Do not suppress the command's nonzero exit status: code 1 means drift, while code 2 means the comparison could not be performed.
 
 Exclusions match comparison paths; they do not mask fields inside whole-container changes. See [comparison semantics](../../README.md#exclude-paths). Redaction hides before/after values, while excluded paths and error file paths remain visible.

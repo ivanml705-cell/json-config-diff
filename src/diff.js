@@ -35,8 +35,14 @@ export async function readJson(file) {
   const info = await stat(file);
   if (!info.isFile()) throw new Error(`Not a file: ${file}`);
   if (info.size > 5 * 1024 * 1024) throw new Error(`JSON file exceeds 5 MiB: ${file}`);
+  const bytes = await readFile(file);
+  // Recheck the bytes actually read in case the file grew after stat.
+  if (bytes.length > 5 * 1024 * 1024) throw new Error(`JSON file exceeds 5 MiB: ${file}`);
+  let source;
+  try { source = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); }
+  catch { throw new Error(`Invalid UTF-8: ${file}`); }
   let value;
-  try { value = JSON.parse((await readFile(file, 'utf8')).replace(/^\uFEFF/, '')); }
+  try { value = JSON.parse(source.replace(/^\uFEFF/, '')); }
   catch (error) {
     if (error instanceof SyntaxError) throw new Error(`Invalid JSON: ${file}`);
     throw error;

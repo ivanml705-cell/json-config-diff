@@ -5,6 +5,8 @@
 - [x] Session 3: exclude selected JSON Pointer paths and report the applied filters.
 - [x] Session 4: add summary-only output and value redaction for shareable reports.
 - [x] Session 5: project configuration and a practical CI integration example.
-- [ ] Session 6: review edge cases, polish documentation and prepare v0.2.
+- [x] Session 6: review edge cases, polish documentation and prepare v0.2.
 
 Work in useful milestones; several can be completed in a longer session. Commit real changes when they are tested.
+
+The first development cycle is complete with v0.2.0. Further work will focus on reported bugs and concrete use cases.
